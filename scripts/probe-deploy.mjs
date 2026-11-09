@@ -118,3 +118,5 @@ try {
 }
 writeFileSync("deploy-probe-report.md", lines.join("\n") + "\n");
 process.exit(code);
+
+// post-merge verification probe
