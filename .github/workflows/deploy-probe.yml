@@ -1,0 +1,33 @@
+name: Deploy probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, arena/65b6a3d7-allinone]
+    paths:
+      - scripts/probe-deploy.mjs
+      - .github/workflows/deploy-probe.yml
+      - vercel.json
+      - api/index.js
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Probe live deployment
+        run: node scripts/probe-deploy.mjs || true
+      - name: Commit report back to the branch
+        run: |
+          git config user.name "deploy-probe[bot]"
+          git config user.email "deploy-probe@users.noreply.github.com"
+          git add deploy-probe-report.md
+          git diff --cached --quiet || git commit -m "ci: deploy probe report"
+          git push

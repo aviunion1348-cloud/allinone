@@ -178,14 +178,23 @@ plaintext document back to the branch.
 npm test
 # tests/domain.test.js   — SLA transcription + scoring invariants (node:test)
 # tests/spa.smoke.test.js — renders all 7 views in jsdom against a live server
+# tests/boot.e2e.test.js  — boots the REAL index.html + app.js end-to-end
 ```
 
-`npm test` is fully self-contained: the smoke test boots its own server
-(migrate + seed + listen) when none is running, so it works on a fresh clone
-with no manual setup — and releases the port on exit. It drives login over
-bearer auth, opens task/create modals, and asserts **zero runtime errors**
-across every route. CI (`.github/workflows/ci.yml`) runs `npm audit
---audit-level=high` + `npm test` on every push and PR.
+`npm test` is fully self-contained: each suite boots its own server
+(migrate + seed + listen) with a hermetic `/tmp` database, so it works on a
+fresh clone with no manual setup — and releases the port on exit.
+
+The **boot E2E** executes the real `index.html` + `app.js` exactly as a
+browser does — login form → enterApp → router → every route — and asserts
+the sidebar user chip, topbar SLA chip and zero runtime errors. It exists
+because a DOM-structure drift (a missing `.sidebar-foot`) once crashed
+`enterApp()` before the router ran, leaving a completely blank dashboard;
+the view-level smoke test (own fixture HTML) could not see it. CI
+(`.github/workflows/ci.yml`) runs `npm audit --audit-level=high` +
+`npm test` on every push and PR, and `.github/workflows/deploy-probe.yml`
+probes the live Vercel deployment (status + latency for every route,
+report committed as `deploy-probe-report.md`).
 
 ---
 

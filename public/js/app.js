@@ -89,6 +89,7 @@ async function refreshCache() {
 
 function renderUserChip() {
   const foot = $(".sidebar-foot");
+  if (!foot) return; // never block boot on missing chrome (index.html drift)
   const u = state.user;
   clear(foot);
   foot.append(
@@ -132,7 +133,28 @@ function onHash() {
   render();
 }
 
+let rendering = false;
+let renderQueued = false;
 async function render() {
+  // serialize renders — a slow view must never be clobbered (or clobber)
+  // a newer navigation that started while it was in flight
+  if (rendering) {
+    renderQueued = true;
+    return;
+  }
+  rendering = true;
+  try {
+    await renderNow();
+  } finally {
+    rendering = false;
+    if (renderQueued) {
+      renderQueued = false;
+      render();
+    }
+  }
+}
+
+async function renderNow() {
   closeModal();
   const route = ROUTES[state.route];
 
@@ -206,6 +228,16 @@ for (const item of document.querySelectorAll(".nav-item[data-route]")) {
 document.querySelector(".modal-backdrop")?.addEventListener("click", closeModal);
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeModal();
+});
+
+/* Fail loudly on screen — a silent error must never leave a blank view. */
+window.addEventListener("unhandledrejection", (e) => {
+  console.error("unhandledrejection:", e.reason);
+  try { toast(`Unexpected error: ${e.reason?.message || e.reason}`, "err"); } catch { /* ignore */ }
+});
+window.addEventListener("error", (e) => {
+  console.error("window.error:", e.message);
+  try { toast(`Script error: ${e.message}`, "err"); } catch { /* ignore */ }
 });
 
 boot();
