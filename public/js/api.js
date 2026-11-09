@@ -43,6 +43,8 @@ async function request(method, path, body) {
     opts.headers["Content-Type"] = "application/json";
     opts.body = JSON.stringify(body);
   }
+  // 15s timeout — a hung request must fail visibly, never hang a view
+  opts.signal = AbortSignal.timeout(15_000);
   const res = await fetch(`/api/v1${path}`, opts);
   let data = null;
   try {

@@ -3,10 +3,12 @@ name: Deploy probe
 on:
   workflow_dispatch:
   push:
-    branches: [arena/65b6a3d7-allinone]
+    branches: [main, arena/65b6a3d7-allinone]
     paths:
       - scripts/probe-deploy.mjs
       - .github/workflows/deploy-probe.yml
+      - vercel.json
+      - api/index.js
 
 permissions:
   contents: write
