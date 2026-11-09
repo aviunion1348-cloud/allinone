@@ -1,11 +1,17 @@
 /**
  * Live-deployment probe — hits the production URL and reports status +
  * latency for static assets and every authenticated API surface.
- * Run via the "Deploy probe" workflow (workflow_dispatch) or locally:
+ * Writes `deploy-probe-report.md` at the repo root (CI commits it back
+ * so results are readable even where the Actions log host is blocked).
+ *
  *   DEPLOY_URL=https://... node scripts/probe-deploy.mjs
  */
+import { writeFileSync } from "node:fs";
+
 const BASE = process.env.DEPLOY_URL || "https://allinone-two-nu.vercel.app";
 const results = [];
+const lines = [];
+const say = (s = "") => { lines.push(s); console.log(s); };
 
 async function hit(label, path, opts = {}) {
   const t0 = Date.now();
@@ -19,21 +25,24 @@ async function hit(label, path, opts = {}) {
     let body = "";
     try { body = await res.text(); } catch { /* no body */ }
     results.push({ label, status: res.status, ms, body });
-    console.log(`${String(res.status).padEnd(4)} ${String(ms + "ms").padEnd(8)} ${label}`);
+    say(`${String(res.status).padEnd(4)} ${String(ms + "ms").padEnd(8)} ${label}`);
     return { res, body, ms };
   } catch (err) {
     const ms = Date.now() - t0;
     results.push({ label, status: "ERR", ms, body: String(err) });
-    console.log(`ERR  ${ms}ms      ${label} — ${err}`);
+    say(`ERR  ${ms}ms      ${label} — ${err}`);
     return { res: null, body: "", ms };
   }
 }
 
 async function main() {
-  console.log(`probing ${BASE}\n`);
+  say(`# Deploy probe — ${BASE}`);
+  say("");
+  say(`_run at ${new Date().toISOString()}_`);
+  say("");
 
   const idx = await hit("GET / (static shell)", "/");
-  console.log(`     contains new copy: ${idx.body.includes("Admin access")}`);
+  say(`     contains new copy: ${idx.body.includes("Admin access")}`);
 
   await hit("GET /css/app.css", "/css/app.css");
   await hit("GET /js/app.js", "/js/app.js");
@@ -49,12 +58,14 @@ async function main() {
   let token = null;
   try { token = JSON.parse(login.body).token; } catch { /* ignore */ }
   if (!token) {
-    console.log("\nLOGIN FAILED — cannot probe authenticated routes");
-    console.log(login.body.slice(0, 500));
-    process.exitCode = 1;
-    return;
+    say("");
+    say("LOGIN FAILED — cannot probe authenticated routes");
+    say("```");
+    say(String(login.body).slice(0, 500));
+    say("```");
+    return 1;
   }
-  console.log(`     token length: ${token.length}`);
+  say(`     token length: ${token.length}`);
 
   const auth = { authorization: `Bearer ${token}` };
   const authed = [
@@ -64,28 +75,40 @@ async function main() {
     "GET /pipeline/stages", "GET /activities?limit=10",
   ];
   for (const spec of authed) {
-    const [method, path] = [spec.slice(0, spec.indexOf(" ")), spec.slice(spec.indexOf(" ") + 1)];
-    await hit(`${method} ${path}`, path, { method, headers: auth });
+    const i = spec.indexOf(" ");
+    await hit(spec, spec.slice(i + 1), { method: spec.slice(0, i), headers: auth });
   }
 
-  // shape check on the dashboard payload
+  let exitCode = 0;
+
   const dash = results.find((r) => r.label.includes("/dashboard"));
+  say("");
   if (dash && dash.status === 200) {
     try {
       const d = JSON.parse(dash.body);
-      console.log(`\ndashboard shape: kpis=${Object.keys(d.kpis || {}).length} byStatus=${(d.byStatus || []).length} queue=${(d.priorityQueue || []).length} activities=${(d.activities || []).length}`);
+      say(`dashboard shape: kpis=${Object.keys(d.kpis || {}).length} byStatus=${(d.byStatus || []).length} queue=${(d.priorityQueue || []).length} activities=${(d.activities || []).length} breaches=${d.kpis?.breached}`);
     } catch {
-      console.log(`\ndashboard body is NOT JSON: ${String(dash.body).slice(0, 200)}`);
-      process.exitCode = 1;
+      say(`dashboard body is NOT JSON: ${String(dash.body).slice(0, 300)}`);
+      exitCode = 1;
     }
   } else if (dash) {
-    process.exitCode = 1;
-    console.log(`\ndashboard FAILED: ${dash.status} ${String(dash.body).slice(0, 300)}`);
+    exitCode = 1;
+    say(`dashboard FAILED: ${dash.status} ${String(dash.body).slice(0, 300)}`);
   }
 
   const failed = results.filter((r) => r.status !== 200);
-  console.log(`\n${results.length} probes, ${failed.length} non-200`);
-  if (failed.length) process.exitCode = 1;
+  say("");
+  say(`${results.length} probes, ${failed.length} non-200`);
+  if (failed.length) exitCode = 1;
+  return exitCode;
 }
 
-main();
+let code = 1;
+try {
+  code = await main();
+} catch (err) {
+  say(`PROBE CRASHED: ${err?.stack || err}`);
+  code = 1;
+}
+writeFileSync("deploy-probe-report.md", lines.join("\n") + "\n");
+process.exit(code);
