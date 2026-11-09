@@ -1,0 +1,211 @@
+
+> aurum-ops@1.0.0 test
+> node --test tests/domain.test.js && node tests/spa.smoke.test.js && node tests/boot.e2e.test.js
+
+TAP version 13
+# (node:2438) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: SLA policies transcribed from the pipeline document
+ok 1 - SLA policies transcribed from the pipeline document
+  ---
+  duration_ms: 1.993833
+  type: 'test'
+  ...
+# Subtest: slaState classifies remaining time
+ok 2 - slaState classifies remaining time
+  ---
+  duration_ms: 0.53932
+  type: 'test'
+  ...
+# Subtest: weights default sum to ~1
+ok 3 - weights default sum to ~1
+  ---
+  duration_ms: 0.319578
+  type: 'test'
+  ...
+# Subtest: critical + overdue task outscores low priority someday-task
+ok 4 - critical + overdue task outscores low priority someday-task
+  ---
+  duration_ms: 0.498774
+  type: 'test'
+  ...
+# Subtest: blocking leverage raises score when dependents are open
+ok 5 - blocking leverage raises score when dependents are open
+  ---
+  duration_ms: 0.404628
+  type: 'test'
+  ...
+# Subtest: phase SLA breach dominates slaRisk factor
+ok 6 - phase SLA breach dominates slaRisk factor
+  ---
+  duration_ms: 0.226273
+  type: 'test'
+  ...
+# Subtest: score is bounded 0..100 and factors explain the sum
+ok 7 - score is bounded 0..100 and factors explain the sum
+  ---
+  duration_ms: 0.328815
+  type: 'test'
+  ...
+# Subtest: effort factor favours quick wins
+ok 8 - effort factor favours quick wins
+  ---
+  duration_ms: 0.324397
+  type: 'test'
+  ...
+# Subtest: getWeights returns defaults when settings empty
+ok 9 - getWeights returns defaults when settings empty
+  ---
+  duration_ms: 0.418583
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 98.400288
+{"ts":"2026-11-09T09:05:09.051Z","level":"info","msg":"database.opened","file":"/tmp/aurum-smoke-2445.sqlite"}
+{"ts":"2026-11-09T09:05:09.053Z","level":"info","msg":"migration.applying","file":"001_init.sql"}
+{"ts":"2026-11-09T09:05:09.055Z","level":"info","msg":"migration.applying","file":"002_purge_demo_data.sql"}
+{"ts":"2026-11-09T09:05:09.055Z","level":"info","msg":"migration.applying","file":"003_drop_demo_viewer.sql"}
+{"ts":"2026-11-09T09:05:09.055Z","level":"info","msg":"migration.applied","count":3}
+{"ts":"2026-11-09T09:05:09.056Z","level":"info","msg":"seed.start"}
+{"ts":"2026-11-09T09:05:09.147Z","level":"info","msg":"seed.complete","users":10,"clients":0,"projects":0,"tasks":0}
+(node:2445) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(test server booted on :4100, db /tmp/aurum-smoke-2445.sqlite)
+== health ==
+{"ts":"2026-11-09T09:05:09.168Z","level":"info","msg":"http","method":"GET","path":"/api/v1/health","status":200,"ms":4.8}
+  ✓ API healthy
+== login flow ==
+{"ts":"2026-11-09T09:05:09.294Z","level":"info","msg":"http","method":"POST","path":"/api/v1/auth/login","status":200,"ms":100}
+  ✓ login 200
+  ✓ login returns bearer token
+== boot SPA modules ==
+  ✓ all view modules imported
+== fixtures via API ==
+{"ts":"2026-11-09T09:05:09.307Z","level":"info","msg":"http","method":"POST","path":"/api/v1/clients","status":201,"ms":4,"user":1}
+{"ts":"2026-11-09T09:05:09.316Z","level":"info","msg":"http","method":"POST","path":"/api/v1/projects","status":201,"ms":6,"user":1}
+{"ts":"2026-11-09T09:05:09.325Z","level":"info","msg":"http","method":"POST","path":"/api/v1/tasks","status":201,"ms":3.4,"user":1}
+  ✓ client + project + task created via API
+{"ts":"2026-11-09T09:05:09.331Z","level":"info","msg":"http","method":"GET","path":"/api/v1/users","status":200,"ms":2.2,"user":1}
+{"ts":"2026-11-09T09:05:09.333Z","level":"info","msg":"http","method":"GET","path":"/api/v1/projects","status":200,"ms":1.3,"user":1}
+{"ts":"2026-11-09T09:05:09.336Z","level":"info","msg":"http","method":"GET","path":"/api/v1/clients","status":200,"ms":1.1,"user":1}
+  ✓ cache populated
+== dashboard ==
+{"ts":"2026-11-09T09:05:09.362Z","level":"info","msg":"http","method":"GET","path":"/api/v1/dashboard","status":200,"ms":6.9,"user":1}
+  ✓ KPI present
+  ✓ compliance KPI present
+  ✓ AI queue present
+  ✓ ≥6 KPI cards
+  ✓ chart rendered
+== board ==
+{"ts":"2026-11-09T09:05:09.592Z","level":"info","msg":"http","method":"GET","path":"/api/v1/tasks/board","status":200,"ms":1.7,"user":1}
+  ✓ task cards rendered (1)
+  ✓ 6 kanban columns
+  ✓ in_progress column
+== task modal ==
+{"ts":"2026-11-09T09:05:09.608Z","level":"info","msg":"http","method":"GET","path":"/api/v1/tasks","status":200,"ms":1.6,"user":1}
+{"ts":"2026-11-09T09:05:09.611Z","level":"info","msg":"http","method":"GET","path":"/api/v1/tasks/1","status":200,"ms":1.4,"user":1}
+{"ts":"2026-11-09T09:05:09.616Z","level":"info","msg":"http","method":"GET","path":"/api/v1/ai/score/1","status":200,"ms":1.5,"user":1}
+{"ts":"2026-11-09T09:05:09.619Z","level":"info","msg":"http","method":"GET","path":"/api/v1/tasks/1/assignee-suggestions","status":200,"ms":1.2,"user":1}
+  ✓ modal shows title
+  ✓ AI factor breakdown rendered
+== create task modal ==
+  ✓ create form fields
+== pipeline ==
+{"ts":"2026-11-09T09:05:09.645Z","level":"info","msg":"http","method":"GET","path":"/api/v1/clients","status":200,"ms":1,"user":1}
+{"ts":"2026-11-09T09:05:09.646Z","level":"info","msg":"http","method":"GET","path":"/api/v1/pipeline/stages","status":200,"ms":0.9,"user":1}
+{"ts":"2026-11-09T09:05:09.648Z","level":"info","msg":"http","method":"GET","path":"/api/v1/playbook","status":200,"ms":2.2,"user":1}
+  ✓ stage columns
+  ✓ client cards
+  ✓ SLA policy table
+  ✓ persona playbook panel
+  ✓ all three personas rendered
+  ✓ market-as positioning
+  ✓ delivery roles matrix
+== projects ==
+{"ts":"2026-11-09T09:05:09.885Z","level":"info","msg":"http","method":"GET","path":"/api/v1/projects","status":200,"ms":1.2,"user":1}
+  ✓ project cards
+{"ts":"2026-11-09T09:05:10.044Z","level":"info","msg":"http","method":"GET","path":"/api/v1/projects/1","status":200,"ms":2.4,"user":1}
+  ✓ 6 delivery phases
+  ✓ spec phase present
+== roadmap ==
+{"ts":"2026-11-09T09:05:10.211Z","level":"info","msg":"http","method":"GET","path":"/api/v1/roadmap","status":200,"ms":3.9,"user":1}
+  ✓ roadmap section
+== ai ==
+{"ts":"2026-11-09T09:05:10.226Z","level":"info","msg":"http","method":"GET","path":"/api/v1/ai/ranks?limit=50","status":200,"ms":1.5,"user":1}
+{"ts":"2026-11-09T09:05:10.227Z","level":"info","msg":"http","method":"GET","path":"/api/v1/ai/weights","status":200,"ms":0.8,"user":1}
+  ✓ rank queue
+  ✓ ranked rows
+  ✓ weights panel
+== team ==
+{"ts":"2026-11-09T09:05:10.443Z","level":"info","msg":"http","method":"GET","path":"/api/v1/sla/health","status":200,"ms":1.6,"user":1}
+{"ts":"2026-11-09T09:05:10.446Z","level":"info","msg":"http","method":"GET","path":"/api/v1/users/workload","status":200,"ms":5.4,"user":1}
+{"ts":"2026-11-09T09:05:10.447Z","level":"info","msg":"http","method":"GET","path":"/api/v1/sla/policies","status":200,"ms":2.7,"user":1}
+  ✓ workload panel
+  ✓ policy book
+== modals & helpers ==
+  ✓ toast renders
+  ✓ donut chart svg
+  ✓ markdown renderer
+  ✓ confirmDialog resolves false on cancel (backdrop)
+== cleanup fixtures ==
+{"ts":"2026-11-09T09:05:10.788Z","level":"info","msg":"http","method":"DELETE","path":"/api/v1/tasks/1","status":200,"ms":1.6,"user":1}
+{"ts":"2026-11-09T09:05:10.790Z","level":"info","msg":"http","method":"DELETE","path":"/api/v1/projects/1","status":200,"ms":1.1,"user":1}
+{"ts":"2026-11-09T09:05:10.792Z","level":"info","msg":"http","method":"DELETE","path":"/api/v1/clients/1","status":200,"ms":1,"user":1}
+{"ts":"2026-11-09T09:05:10.794Z","level":"info","msg":"http","method":"GET","path":"/api/v1/tasks","status":200,"ms":0.7,"user":1}
+  ✓ fixtures cleaned up
+== auth guard ==
+{"ts":"2026-11-09T09:05:10.796Z","level":"info","msg":"http","method":"GET","path":"/api/v1/dashboard","status":401,"ms":0.7}
+  ✓ unauthenticated → 401
+  ✓ no runtime errors (0)
+
+SMOKE TEST PASSED ✓
+{"ts":"2026-11-09T09:05:14.968Z","level":"info","msg":"database.opened","file":"/tmp/aurum-boot-2464.sqlite"}
+{"ts":"2026-11-09T09:05:14.970Z","level":"info","msg":"migration.applying","file":"001_init.sql"}
+{"ts":"2026-11-09T09:05:14.971Z","level":"info","msg":"migration.applying","file":"002_purge_demo_data.sql"}
+{"ts":"2026-11-09T09:05:14.971Z","level":"info","msg":"migration.applying","file":"003_drop_demo_viewer.sql"}
+{"ts":"2026-11-09T09:05:14.972Z","level":"info","msg":"migration.applied","count":3}
+{"ts":"2026-11-09T09:05:14.973Z","level":"info","msg":"seed.start"}
+{"ts":"2026-11-09T09:05:15.063Z","level":"info","msg":"seed.complete","users":10,"clients":0,"projects":0,"tasks":0}
+(node:2464) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(boot test server on :4100)
+== boot (real app.js) ==
+{"ts":"2026-11-09T09:05:15.095Z","level":"info","msg":"http","method":"GET","path":"/api/v1/auth/me","status":401,"ms":6.3}
+  ✓ boot reached login (api.me 401 → showLogin)
+== login through the real form ==
+{"ts":"2026-11-09T09:05:15.270Z","level":"info","msg":"http","method":"POST","path":"/api/v1/auth/login","status":200,"ms":95.8}
+{"ts":"2026-11-09T09:05:15.286Z","level":"info","msg":"http","method":"GET","path":"/api/v1/projects","status":200,"ms":1.3,"user":1}
+{"ts":"2026-11-09T09:05:15.289Z","level":"info","msg":"http","method":"GET","path":"/api/v1/clients","status":200,"ms":1,"user":1}
+{"ts":"2026-11-09T09:05:15.289Z","level":"info","msg":"http","method":"GET","path":"/api/v1/users","status":200,"ms":8,"user":1}
+  ✓ login → app revealed → dashboard rendered
+== chrome that was blank before ==
+  ✓ .sidebar-foot exists in real index.html
+  ✓ user chip rendered in sidebar footer
+  ✓ sign-out action rendered
+  ✓ topbar SLA chip rendered
+  ✗ FAIL: dashboard KPI content present
+  ✓ nav badge element present
+== every route renders in the real shell ==
+{"ts":"2026-11-09T09:05:15.367Z","level":"info","msg":"http","method":"GET","path":"/api/v1/dashboard","status":200,"ms":19.8,"user":1}
+{"ts":"2026-11-09T09:05:15.371Z","level":"info","msg":"http","method":"GET","path":"/api/v1/tasks/board","status":200,"ms":1.6,"user":1}
+{"ts":"2026-11-09T09:05:15.382Z","level":"info","msg":"http","method":"GET","path":"/api/v1/tasks/board","status":200,"ms":1.3,"user":1}
+BOOT E2E CRASH: Error: timeout waiting for kanban columns
+    at waitFor (file:///home/runner/work/allinone/allinone/tests/boot.e2e.test.js:107:9)
+    at async main (file:///home/runner/work/allinone/allinone/tests/boot.e2e.test.js:166:5)
+captured console.error/window errors:
+  • (node:2464) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+  • BOOT E2E CRASH: Error: timeout waiting for kanban columns
+  • captured console.error/window errors:
+#content children: 1 html: <div><div class="sla-banner good">All active phases within turnover SLA.</div><div class="kpi-grid"><div class="kpi"><div class="kpi-label">Active projects</div><div class="kpi-value gold">0</div><div class="kpi-sub"><b>0</b> open tasks · <b>0</b>h loaded</div></div><div class="kpi"><div class="kpi-label">WIP in progress</div><div class="kpi-value">0</div><div class="kpi-sub"><b>0</b> done last 7 
+#app hidden: false
+hash: #/board
+topbar: SLA ENFORCED09:05 AM
+toasts: 
