@@ -155,6 +155,12 @@ async function main() {
   const routes = [
     ["board", () => document.querySelectorAll(".column").length === 6, "kanban columns"],
     ["pipeline", () => document.querySelectorAll(".stage").length >= 9, "pipeline stages"],
+    ["clocks", () => text().includes("Live clocks"), "turnover clocks"],
+    ["planning", () => text().includes("Weekly capacity"), "planning & capacity"],
+    ["qa", () => text().includes("Edge-case matrix"), "QA centre"],
+    ["releases", () => text().includes("Release train"), "releases"],
+    ["clients", () => text().includes("Accounts") || text().includes("No clients yet"), "clients"],
+    ["partner", () => text().includes("one account") || text().includes("No clients yet"), "partner console"],
     ["projects", () => text().includes("No projects") || document.querySelectorAll(".card").length >= 1, "projects view"],
     ["roadmap", () => text().includes("Excalidraw") || text().includes("pipeline"), "roadmap doc"],
     ["ai", () => text().includes("Priority queue"), "AI queue"],

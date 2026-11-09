@@ -53,9 +53,13 @@ async function request(method, path, body) {
     /* no body */
   }
   if (!res.ok) {
-    if (res.status === 401 && token) {
-      // stale token — drop it so the login screen can take over
+    if (res.status === 401) {
+      // stale/rotated session — drop it and tell the app to show login
+      // (instead of every view rendering its own "Session expired" card)
       auth.clear();
+      try {
+        window.dispatchEvent(new CustomEvent("aurum:unauthorized"));
+      } catch { /* no window (node tests) */ }
     }
     const err = data?.error ?? {};
     throw new ApiError(res.status, err.code || "error", err.message || res.statusText, err.details);
@@ -118,6 +122,17 @@ export const api = {
   playbook: () => request("GET", "/playbook"),
   activities: (limit = 40) => request("GET", `/activities?limit=${limit}`),
   roadmap: () => request("GET", "/roadmap"),
+
+  // command deck
+  clocks: () => request("GET", "/clocks"),
+  planning: () => request("GET", "/planning"),
+  qa: () => request("GET", "/qa"),
+  setEdgeCases: (total) => request("PATCH", "/qa/edge-cases", { total }),
+  releases: () => request("GET", "/releases"),
+  createRelease: (d) => request("POST", "/releases", d),
+  updateRelease: (id, patch) => request("PATCH", `/releases/${id}`, patch),
+  deleteRelease: (id) => request("DELETE", `/releases/${id}`),
+  clientConsole: (id) => request("GET", `/clients/${id}/console`),
 };
 
 export { ApiError };

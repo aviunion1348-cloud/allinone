@@ -8,14 +8,26 @@ import { renderProjects, renderProjectDetail } from "./views/projects.js";
 import { renderRoadmap } from "./views/roadmap.js";
 import { renderAI } from "./views/ai.js";
 import { renderTeam } from "./views/team.js";
+import { renderClocks } from "./views/clocks.js";
+import { renderPlanning } from "./views/planning.js";
+import { renderQA } from "./views/qa.js";
+import { renderReleases } from "./views/releases.js";
+import { renderClients } from "./views/clients.js";
+import { renderPartner } from "./views/partner.js";
 
 const ROUTES = {
-  dashboard: { title: "Dashboard", render: (ctx) => renderDashboard(ctx) },
-  board: { title: "Agile <em>Board</em>", render: (ctx) => renderBoard(ctx) },
-  pipeline: { title: "Client <em>Pipeline</em>", render: (ctx) => renderPipeline(ctx) },
+  dashboard: { title: "Command <em>Deck</em>", render: (ctx) => renderDashboard(ctx) },
+  board: { title: "Board", render: (ctx) => renderBoard(ctx) },
+  pipeline: { title: "Pipeline", render: (ctx) => renderPipeline(ctx) },
+  clocks: { title: "Turnover <em>Clocks</em>", render: (ctx) => renderClocks(ctx) },
   projects: { title: "Projects", render: (ctx) => renderProjects(ctx) },
+  planning: { title: "Planning & <em>Capacity</em>", render: (ctx) => renderPlanning(ctx) },
+  qa: { title: "QA <em>Centre</em>", render: (ctx) => renderQA(ctx) },
+  releases: { title: "Releases", render: (ctx) => renderReleases(ctx) },
+  clients: { title: "Clients", render: (ctx) => renderClients(ctx) },
+  partner: { title: "Partner <em>Console</em>", render: (ctx) => renderPartner(null, ctx) },
   roadmap: { title: "Roadmap & <em>Excalidraw</em>", render: (ctx) => renderRoadmap(ctx) },
-  ai: { title: "AI <em>Priorities</em>", render: (ctx) => renderAI(ctx) },
+  ai: { title: "Intelligence", render: (ctx) => renderAI(ctx) },
   team: { title: "Team & <em>SLA</em>", render: (ctx) => renderTeam(ctx) },
 };
 
@@ -179,6 +191,8 @@ async function renderNow() {
     if (state.route === "projects" && state.param) {
       $("#page-title").innerHTML = "Project <em>Detail</em>";
       await renderProjectDetail(state.param, ctx);
+    } else if (state.route === "partner") {
+      await renderPartner(state.param, ctx);
     } else {
       await route.render(ctx);
     }
@@ -203,7 +217,7 @@ async function bgRefresh() {
   if (focusedCard) return;
   refreshing = true;
   try {
-    if (["dashboard", "pipeline", "team"].includes(state.route)) {
+    if (["dashboard", "pipeline", "team", "clocks"].includes(state.route)) {
       await render();
     } else if (state.route === "board") {
       // light refresh: only the board itself, keep scroll position
@@ -238,6 +252,14 @@ window.addEventListener("unhandledrejection", (e) => {
 window.addEventListener("error", (e) => {
   console.error("window.error:", e.message);
   try { toast(`Script error: ${e.message}`, "err"); } catch { /* ignore */ }
+});
+
+/* Session expired / rotated — return to login once, with a clear message. */
+window.addEventListener("aurum:unauthorized", () => {
+  if (!state.user) return; // already at the login screen
+  state.user = null;
+  toast("Session expired — please sign in again", "err", 5000);
+  showLogin();
 });
 
 boot();

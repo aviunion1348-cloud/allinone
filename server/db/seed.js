@@ -16,7 +16,7 @@ import { recomputeRanks } from "../domain/ai.js";
 import { log } from "../util/logger.js";
 
 const USERS = [
-  { email: "avi@aurum.internal", name: "Avi", role: "admin", title: "Founder / QA lead", color: "#e8b923", capacity: 40 },
+  { email: "avi@aurum.internal", name: "Avi", role: "admin", title: "QA", color: "#e8b923", capacity: 40 },
   { email: "hoE@aurum.internal", name: "HoE", role: "lead", title: "Head of Engineering", color: "#f5d76e", capacity: 36 },
   { email: "cto@aurum.internal", name: "CTO", role: "lead", title: "Chief Technology Officer", color: "#c9a227", capacity: 32 },
   { email: "agrim@aurum.internal", name: "Agrim", role: "qa", title: "QA / Development", color: "#ffd866", capacity: 36 },

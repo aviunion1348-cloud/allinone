@@ -6,6 +6,16 @@ import { seedIfEmpty } from "./db/seed.js";
 import { closeDb, pingDb } from "./db/connection.js";
 import { log } from "./util/logger.js";
 
+// Backstop: a stray rejection must never kill the process — a dead server
+// drops every session at once. Route-level async handlers are wrapped with
+// asyncRoute; this only catches anything missed elsewhere.
+process.on("unhandledRejection", (err) => {
+  log.error("process.unhandled_rejection", {
+    error: err?.message,
+    stack: err?.stack,
+  });
+});
+
 async function main() {
   migrate();
   if (config.seedOnEmpty) seedIfEmpty();
