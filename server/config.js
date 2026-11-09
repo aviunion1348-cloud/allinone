@@ -30,6 +30,22 @@ function secret(name, bytes = 48) {
   return value;
 }
 
+/**
+ * JWT signing secret.
+ *
+ * Locally we generate once and persist under data/ (stable across restarts).
+ * On serverless the bundle + /tmp are per-instance, so a *random* secret
+ * would be different on every cold start (and every concurrent instance) —
+ * invalidating all sessions at random ("Session expired" everywhere).
+ * There we fall back to a stable deployment-wide value unless the operator
+ * sets AURUM_JWT_SECRET (recommended for anything non-demo).
+ */
+function jwtSecretValue() {
+  if (process.env.AURUM_JWT_SECRET) return process.env.AURUM_JWT_SECRET;
+  if (onVercel) return "aurum-ops-vercel-default-secret-set-AURUM_JWT_SECRET-to-override";
+  return secret("AURUM_JWT_SECRET");
+}
+
 const env = process.env.NODE_ENV ?? "development";
 
 export const config = Object.freeze({
@@ -40,8 +56,8 @@ export const config = Object.freeze({
   root,
   dataDir,
   dbFile: process.env.DB_FILE || path.join(dataDir, "aurum.sqlite"),
-  jwtSecret: secret("AURUM_JWT_SECRET"),
-  jwtTtl: process.env.JWT_TTL || "12h",
+  jwtSecret: jwtSecretValue(),
+  jwtTtl: process.env.JWT_TTL || "7d",
   cookieName: "aurum_session",
   cookieSecure: process.env.COOKIE_SECURE === "1" || onVercel,
   seedOnEmpty: process.env.SEED_ON_EMPTY !== "0",

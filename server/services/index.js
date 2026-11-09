@@ -175,6 +175,28 @@ export const clientService = {
   stageCounts() {
     return repo.clients.stageCounts();
   },
+  /** Partner Console — one client with everything about them. */
+  console(id) {
+    const client = this.get(id);
+    if (!client) return null;
+    const now = Date.now();
+    const projects = repo.projects.list({ client_id: id }).map((p) => {
+      const tasks = repo.tasks.list({ project_id: p.id });
+      return {
+        ...p,
+        phases: repo.phases.forProject(p.id).map((ph) => ({ ...ph, sla: slaState(ph.due_at, now) })),
+        tasks_open: tasks.filter((t) => t.status !== "done").length,
+        tasks_total: tasks.length,
+      };
+    });
+    const projectIds = new Set(projects.map((p) => p.id));
+    const activities = repo.activities.recent(80).filter(
+      (a) => (a.entity === "client" && a.entity_id === id)
+        || (a.entity === "project" && projectIds.has(a.entity_id)),
+    );
+    const releases = repo.releases.list().filter((r) => projectIds.has(r.project_id));
+    return { ...client, projects, activities, releases };
+  },
 };
 
 /** Soft per-stage budget (used for pipeline countdown badges). */
@@ -389,3 +411,117 @@ export const aiService = {
 };
 
 export { recomputeRanks };
+
+/* ─────────────── command deck: clocks / planning / qa / releases ─── */
+
+export const clockService = {
+  summary() {
+    const now = Date.now();
+    const phases = repo.aggregates.activePhases().map((ph) => ({ ...ph, sla: slaState(ph.due_at, now) }));
+    const tasks = repo.aggregates.dueTasks(40).map((t) => ({ ...t, sla: slaState(t.due_at, now) }));
+    const isBad = (s) => s === "breached";
+    const isWarn = (s) => s === "critical" || s === "warning";
+    return {
+      now,
+      phases,
+      tasks,
+      breached: phases.filter((p) => isBad(p.sla.state)).length + tasks.filter((t) => isBad(t.sla.state)).length,
+      at_risk: phases.filter((p) => isWarn(p.sla.state)).length + tasks.filter((t) => isWarn(t.sla.state)).length,
+    };
+  },
+};
+
+export const planningService = {
+  summary() {
+    const members = repo.users.workload().map((m) => {
+      const capacity = m.capacity_hours_week || 40;
+      return {
+        ...m,
+        capacity,
+        utilization: capacity ? Math.min(200, Math.round((m.open_hours / capacity) * 100)) : 0,
+      };
+    });
+    const projects = repo.aggregates.projectCapacity().map((p) => ({
+      ...p,
+      burn_pct: p.budget_hours ? Math.round((p.open_hours / p.budget_hours) * 100) : null,
+    }));
+    return {
+      members,
+      projects,
+      totals: {
+        capacity_hours: members.reduce((s, m) => s + m.capacity, 0),
+        committed_hours: members.reduce((s, m) => s + m.open_hours, 0),
+        unassigned: repo.aggregates.unassignedOpenTasks(),
+      },
+    };
+  },
+};
+
+const EDGE_TARGET = 3500; // ship gate transcribed from the Excalidraw policy
+
+export const qaService = {
+  summary() {
+    const stored = repo.settings.get("qa.edge_cases");
+    const total = Number(stored?.total) || 0;
+    const target = Number(stored?.target) || EDGE_TARGET;
+    const tasks = repo.aggregates.qaTasks();
+    const byStatus = Object.fromEntries(
+      repo.aggregates.qaStatusCounts().map((r) => [r.status, r.count]),
+    );
+    const policy = get("SELECT * FROM sla_policies WHERE key = 'qa_report'");
+    return {
+      edgeCases: { total, target, pct: target ? Math.min(100, Math.round((total / target) * 100)) : 0 },
+      tasks,
+      byStatus,
+      openBugs: tasks.filter((t) => t.type === "bug" && t.status !== "done").length,
+      openQa: tasks.filter((t) => t.type === "qa" && t.status !== "done").length,
+      policy: policy ?? null,
+    };
+  },
+  setEdgeCases(total, actorId) {
+    const value = {
+      total: Math.max(0, Math.round(Number(total) || 0)),
+      target: EDGE_TARGET,
+      updated_at: Date.now(),
+    };
+    repo.settings.set("qa.edge_cases", value);
+    if (actorId) journal(actorId, "qa", 0, "update", `edge-case matrix → ${value.total}/${EDGE_TARGET}`);
+    return value;
+  },
+};
+
+export const releaseService = {
+  list(filter) {
+    return repo.releases.list(filter);
+  },
+  create(data, actorId) {
+    const release = repo.releases.create({ ...data, created_by: actorId });
+    journal(
+      actorId, "release", release.id, "created",
+      `created release ${release.name}${release.version ? ` v${release.version}` : ""}`,
+    );
+    bus.emit("release", { op: "create", id: release.id });
+    return release;
+  },
+  update(id, patch, actorId) {
+    const before = repo.releases.byId(id);
+    if (!before) return null;
+    const release = repo.releases.update(id, patch);
+    const statusChanged = patch.status && patch.status !== before.status;
+    journal(
+      actorId, "release", id, statusChanged ? "status" : "updated",
+      statusChanged
+        ? `release ${release.name}: ${before.status} → ${release.status}`
+        : `updated release ${release.name}`,
+    );
+    bus.emit("release", { op: "update", id });
+    return release;
+  },
+  remove(id, actorId) {
+    const before = repo.releases.byId(id);
+    const changes = repo.releases.remove(id);
+    if (changes) journal(actorId, "release", id, "deleted", `removed release ${before?.name}`);
+    bus.emit("release", { op: "delete", id });
+    return changes;
+  },
+};

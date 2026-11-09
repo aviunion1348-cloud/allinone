@@ -10,7 +10,8 @@ import { HttpError } from "../util/logger.js";
 import { config } from "../config.js";
 import {
   authService, taskService, clientService, projectService,
-  dashboardService, aiService,
+  dashboardService, aiService, clockService, planningService,
+  qaService, releaseService,
 } from "../services/index.js";
 import * as repo from "../repositories/index.js";
 import { listSlaPolicies, turnoverHealth, slaState } from "../domain/sla.js";
@@ -18,6 +19,15 @@ import { getWeights, setWeights } from "../domain/ai.js";
 import { PERSONAS, ROLES, COMMS_PROTOCOL } from "../domain/playbook.js";
 
 export const api = Router();
+
+/**
+ * Express 4 does NOT forward rejections from async handlers — an `await`
+ * that rejects (bad password, offline roadmap, DB hiccup) used to become an
+ * unhandledRejection that killed the whole process, dropping every session
+ * at once (the cascade behind "Session expired" in production).
+ */
+const asyncRoute = (fn) => (req, res, next) =>
+  Promise.resolve(fn(req, res, next)).catch(next);
 
 /* ── health ─────────────────────────────────────────────────────── */
 api.get("/health", (_req, res) => {
@@ -39,7 +49,7 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
-api.post("/auth/login", loginLimiter, validate(loginSchema), async (req, res) => {
+api.post("/auth/login", loginLimiter, validate(loginSchema), asyncRoute(async (req, res) => {
   const { email, password } = req.validated;
   const user = repo.users.byEmail(email.trim().toLowerCase());
   const ok = user && (await bcrypt.compare(password, user.password_hash));
@@ -51,7 +61,7 @@ api.post("/auth/login", loginLimiter, validate(loginSchema), async (req, res) =>
   // token also returned in body → client stores it as a Bearer fallback for
   // environments where third-party cookies are blocked (e.g. preview iframes)
   res.json({ user: safe, token });
-});
+}));
 
 api.post("/auth/logout", (req, res) => {
   res.clearCookie(config.cookieName, { path: "/" });
@@ -286,7 +296,7 @@ api.get("/activities", (req, res) =>
   res.json(repo.activities.recent(req.query.limit ? Number(req.query.limit) : 40)));
 
 /* ── roadmap (Excalidraw pipeline document) ─────────────────────── */
-api.get("/roadmap", async (_req, res) => {
+api.get("/roadmap", asyncRoute(async (_req, res) => {
   const { readFile } = await import("node:fs/promises");
   const path = await import("node:path");
   const docPath = path.join(config.root, "docs", "pipeline.md");
@@ -309,4 +319,49 @@ api.get("/roadmap", async (_req, res) => {
       })),
     ),
   });
+}));
+
+/* ── command deck: clocks / planning / qa / releases / console ────── */
+api.get("/clocks", (_req, res) => res.json(clockService.summary()));
+api.get("/planning", (_req, res) => res.json(planningService.summary()));
+
+api.get("/qa", (_req, res) => res.json(qaService.summary()));
+api.patch(
+  "/qa/edge-cases",
+  requireRole("admin", "lead"),
+  validate(z.object({ total: z.number().int().min(0).max(1_000_000) })),
+  (req, res) => res.json(qaService.setEdgeCases(req.validated.total, req.user.id)),
+);
+
+const releaseSchema = z.object({
+  project_id: z.number().int(),
+  name: z.string().min(1).max(160),
+  version: z.string().max(40).optional().nullable(),
+  status: z.enum(["planned", "staging", "shipped", "rolled_back"]).optional(),
+  notes: z.string().max(4000).optional().nullable(),
+});
+api.get("/releases", (req, res) => {
+  const filter = req.query.project_id ? { project_id: Number(req.query.project_id) } : {};
+  res.json(releaseService.list(filter));
+});
+api.post("/releases", requireRole("admin", "lead"), validate(releaseSchema), (req, res) => {
+  res.status(201).json(releaseService.create(req.validated, req.user.id));
+});
+api.patch("/releases/:id", requireRole("admin", "lead"), (req, res) => {
+  const parsed = releaseSchema.partial().safeParse(req.body);
+  if (!parsed.success) throw HttpError.badRequest("Invalid patch", parsed.error.flatten());
+  const release = releaseService.update(Number(req.params.id), parsed.data, req.user.id);
+  if (!release) throw HttpError.notFound("Release");
+  res.json(release);
+});
+api.delete("/releases/:id", requireRole("admin"), (req, res) => {
+  const changes = releaseService.remove(Number(req.params.id), req.user.id);
+  if (!changes) throw HttpError.notFound("Release");
+  res.json({ ok: true });
+});
+
+api.get("/clients/:id/console", (req, res) => {
+  const data = clientService.console(Number(req.params.id));
+  if (!data) throw HttpError.notFound("Client");
+  res.json(data);
 });

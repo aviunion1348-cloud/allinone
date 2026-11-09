@@ -395,3 +395,137 @@ export const activities = {
     );
   },
 };
+
+/* ──────────────────────────── settings ──────────────────────────── */
+
+export const settings = {
+  get(key) {
+    const row = get("SELECT value FROM settings WHERE key = ?", key);
+    if (!row) return null;
+    try { return JSON.parse(row.value); } catch { return row.value; }
+  },
+  set(key, value) {
+    run(
+      `INSERT INTO settings (key, value) VALUES (?, ?)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value,
+           updated_at = CAST(strftime('%s','now') AS INTEGER)*1000`,
+      key, JSON.stringify(value),
+    );
+    return value;
+  },
+};
+
+/* ──────────────────────────── releases ──────────────────────────── */
+
+export const releases = {
+  list({ project_id } = {}) {
+    return all(
+      `SELECT r.*, p.name AS project_name, p.code AS project_code, u.name AS created_by_name
+         FROM releases r
+         JOIN projects p ON p.id = r.project_id
+         LEFT JOIN users u ON u.id = r.created_by
+        ${project_id ? "WHERE r.project_id = ?" : ""}
+        ORDER BY CASE r.status WHEN 'staging' THEN 0 WHEN 'planned' THEN 1
+                               WHEN 'shipped' THEN 2 ELSE 3 END,
+                 r.created_at DESC`,
+      ...(project_id ? [project_id] : []),
+    );
+  },
+  byId(id) {
+    return get(
+      `SELECT r.*, p.name AS project_name, p.code AS project_code
+         FROM releases r JOIN projects p ON p.id = r.project_id WHERE r.id = ?`,
+      id,
+    );
+  },
+  create(data) {
+    const now = Date.now();
+    const { lastInsertRowid } = run(
+      `INSERT INTO releases (project_id, name, version, status, notes, shipped_at, created_by, created_at, updated_at)
+       VALUES (?,?,?,?,?,?,?,?,?)`,
+      data.project_id, data.name, data.version ?? null, data.status ?? "planned",
+      data.notes ?? null, data.status === "shipped" ? now : null,
+      data.created_by ?? null, now, now,
+    );
+    return this.byId(lastInsertRowid);
+  },
+  update(id, patch) {
+    const cur = this.byId(id);
+    if (!cur) return null;
+    const status = patch.status ?? cur.status;
+    const shipped_at = status === "shipped" ? (cur.shipped_at ?? Date.now()) : null;
+    run(
+      "UPDATE releases SET name=?, version=?, status=?, notes=?, shipped_at=? WHERE id=?",
+      patch.name ?? cur.name,
+      patch.version !== undefined ? patch.version : cur.version,
+      status,
+      patch.notes !== undefined ? patch.notes : cur.notes,
+      shipped_at,
+      id,
+    );
+    return this.byId(id);
+  },
+  remove(id) {
+    return run("DELETE FROM releases WHERE id = ?", id).changes;
+  },
+};
+
+/* ─────────────── command deck aggregates (clocks/planning/qa) ───── */
+
+export const aggregates = {
+  activePhases() {
+    return all(
+      `SELECT ph.id, ph.project_id, ph.key, ph.name, ph.status, ph.sla_hours,
+              ph.started_at, ph.due_at, ph.completed_at,
+              p.code AS project_code, p.name AS project_name
+         FROM phases ph JOIN projects p ON p.id = ph.project_id
+        WHERE ph.status = 'active' AND ph.due_at IS NOT NULL
+        ORDER BY ph.due_at`,
+    );
+  },
+  dueTasks(limit = 40) {
+    return all(
+      `SELECT t.id, t.title, t.due_at, t.status, t.priority, t.type,
+              u.name AS assignee_name, u.color AS assignee_color,
+              p.name AS project_name, p.code AS project_code
+         FROM tasks t
+         JOIN projects p ON p.id = t.project_id
+         LEFT JOIN users u ON u.id = t.assignee_id
+        WHERE t.status NOT IN ('done') AND t.due_at IS NOT NULL
+        ORDER BY t.due_at LIMIT ?`,
+      limit,
+    );
+  },
+  projectCapacity() {
+    return all(
+      `SELECT p.id, p.code, p.name, p.status, p.priority, p.budget_hours,
+              COALESCE(SUM(t.estimate_hours) FILTER (WHERE t.status NOT IN ('done')), 0) AS open_hours,
+              COUNT(t.id) FILTER (WHERE t.status NOT IN ('done')) AS open_tasks,
+              COUNT(t.id) FILTER (WHERE t.assignee_id IS NULL AND t.status NOT IN ('done')) AS unassigned_tasks
+         FROM projects p
+         LEFT JOIN tasks t ON t.project_id = p.id
+        WHERE p.status IN ('planning','active','on_hold')
+        GROUP BY p.id ORDER BY p.name`,
+    );
+  },
+  unassignedOpenTasks() {
+    return get("SELECT COUNT(*) AS n FROM tasks WHERE assignee_id IS NULL AND status NOT IN ('done')").n;
+  },
+  qaTasks() {
+    return all(
+      `SELECT t.id, t.title, t.status, t.priority, t.type, t.due_at, t.estimate_hours,
+              u.name AS assignee_name, p.name AS project_name, p.code AS project_code
+         FROM tasks t JOIN projects p ON p.id = t.project_id
+         LEFT JOIN users u ON u.id = t.assignee_id
+        WHERE t.type IN ('qa','bug')
+        ORDER BY CASE t.status WHEN 'blocked' THEN 0 WHEN 'in_progress' THEN 1
+                               WHEN 'in_review' THEN 2 WHEN 'todo' THEN 3 ELSE 4 END,
+                 t.due_at IS NULL, t.due_at`,
+    );
+  },
+  qaStatusCounts() {
+    return all(
+      "SELECT status, COUNT(*) AS count FROM tasks WHERE type IN ('qa','bug') GROUP BY status",
+    );
+  },
+};
