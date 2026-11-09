@@ -131,11 +131,12 @@ async function main() {
   $("#login-form").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
   await waitFor(() => $("#app") && !$("#app").classList.contains("hidden"), 8000, "app revealed");
   let lastToast = "";
+  // wait for REAL dashboard content — the skeleton also has .kpi elements
   await waitFor(() => {
     const t = document.getElementById("toast-root")?.textContent;
     if (t) lastToast = t;
-    return document.querySelectorAll(".kpi").length >= 6;
-  }, 8000, "dashboard KPIs").catch((e) => {
+    return (document.getElementById("content")?.textContent || "").includes("Active projects");
+  }, 8000, "dashboard content").catch((e) => {
     if (lastToast) errors.push(`toast-captured: ${lastToast}`);
     throw e;
   });
@@ -161,8 +162,7 @@ async function main() {
     ["dashboard", () => document.querySelectorAll(".kpi").length >= 6, "back to dashboard"],
   ];
   for (const [route, check, label] of routes) {
-    window.location.hash = `#/${route}`;
-    window.dispatchEvent(new window.Event("hashchange"));
+    window.location.hash = `#/${route}`; // jsdom fires hashchange natively
     await waitFor(check, 8000, label);
     assert(true, `route /${route} → ${label}`);
   }

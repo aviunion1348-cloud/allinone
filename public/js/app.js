@@ -133,7 +133,28 @@ function onHash() {
   render();
 }
 
+let rendering = false;
+let renderQueued = false;
 async function render() {
+  // serialize renders — a slow view must never be clobbered (or clobber)
+  // a newer navigation that started while it was in flight
+  if (rendering) {
+    renderQueued = true;
+    return;
+  }
+  rendering = true;
+  try {
+    await renderNow();
+  } finally {
+    rendering = false;
+    if (renderQueued) {
+      renderQueued = false;
+      render();
+    }
+  }
+}
+
+async function renderNow() {
   closeModal();
   const route = ROUTES[state.route];
 
