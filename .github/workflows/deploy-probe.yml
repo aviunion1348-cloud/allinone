@@ -2,10 +2,16 @@ name: Deploy probe
 
 on:
   workflow_dispatch:
+  push:
+    branches: [arena/65b6a3d7-allinone]
+    paths:
+      - scripts/probe-deploy.mjs
+      - .github/workflows/deploy-probe.yml
 
 jobs:
   probe:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
