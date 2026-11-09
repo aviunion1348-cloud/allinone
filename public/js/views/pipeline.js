@@ -8,9 +8,11 @@ import {
 export async function renderPipeline(ctx) {
   const content = $("#content");
 
-  let clients, stageInfo;
+  let clients, stageInfo, playbook;
   try {
-    [clients, stageInfo] = await Promise.all([api.clients(), api.pipelineStages()]);
+    [clients, stageInfo, playbook] = await Promise.all([
+      api.clients(), api.pipelineStages(), api.playbook(),
+    ]);
   } catch (err) {
     mount(content, el("div.card", {}, err.message));
     return;
@@ -39,7 +41,49 @@ export async function renderPipeline(ctx) {
         " · ",
         el("code", { style: "color:var(--gold-2)" }, "ship ≤ 5d"),
         ")."),
-      el("button.btn.btn.btn-gold", { onclick: () => openCreateClient(ctx) }, "+ Add client"),
+      el("button.btn.btn-gold", { onclick: () => openCreateClient(ctx) }, "+ Add client"),
+    ),
+
+    /* persona playbook — who you're talking to and how to position */
+    el("div.card", { style: "margin-bottom:18px" },
+      sectionTitle("Persona playbook", "understand who the client is before you pitch"),
+      el("div.grid-3", {},
+        playbook.personas.map((p) =>
+          el("div.well", {
+            style: `padding:15px 17px;border-color:${p.color}33;background:linear-gradient(160deg, ${p.color}12, transparent 70%)`,
+          },
+            el("div.row", { style: "gap:8px;margin-bottom:8px" },
+              el("span.dot", { style: `background:${p.color};box-shadow:0 0 8px ${p.color}` }),
+              el("span", { style: `font-weight:800;font-size:13.5px;color:${p.color}` }, p.label),
+              el("div.spacer"),
+              el("span.tlabel", {}, p.region_hint),
+            ),
+            el("div", { style: "font-size:12.5px;color:var(--text-mid);line-height:1.6;margin-bottom:10px" }, p.who),
+            el("div", {
+              style: "font-size:12.5px;color:var(--text-hi);border-top:1px dashed rgba(255,255,255,.1);padding-top:9px",
+            },
+              el("span", { style: "color:var(--gold-2);font-weight:700;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;display:block;margin-bottom:4px" },
+                "Market as"),
+              `“${p.market_as}”`,
+            ),
+          )),
+      ),
+      el("div.grid-2", { style: "margin-top:16px" },
+        el("div", {},
+          el("div", { style: "font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-2);font-weight:700;margin-bottom:8px" },
+            "Delivery roles"),
+          el("div.row.wrap", { style: "gap:8px" },
+            playbook.roles.map((r) =>
+              el("span.chip.gold", { title: r.holders }, `${r.role}: ${r.holders}`)),
+          ),
+        ),
+        el("div", {},
+          el("div", { style: "font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-2);font-weight:700;margin-bottom:8px" },
+            "Comms protocol"),
+          el("ul", { style: "padding-left:18px;color:var(--text-mid);font-size:12.5px;line-height:1.7" },
+            playbook.comms.slice(0, 3).map((c) => el("li", {}, c))),
+        ),
+      ),
     ),
 
     el("div.pipeline", {},
@@ -158,13 +202,13 @@ async function openClient(id, ctx) {
             el("span.chip.gold", {}, p.code),
             el("span", { style: "flex:1" }, p.name),
             el("span", { style: "color:var(--text-low);font-size:11px" }, p.status),
-            el("button.btn.btn.xs", { onclick: (e) => { e.stopPropagation(); closeModal(); ctx.navigate("projects", p.id); } }, "Open"),
+            el("button.btn.xs", { onclick: (e) => { e.stopPropagation(); closeModal(); ctx.navigate("projects", p.id); } }, "Open"),
           )),
       ),
 
     el("div.row", { style: "justify-content:flex-end;gap:10px;margin-top:20px" },
       ["admin"].includes(ctx.user?.role) &&
-        el("button.btn.btn.btn-danger", {
+        el("button.btn.btn-danger", {
           onclick: async () => {
             const ok = await confirmDialog("Remove client", `Remove ${client.company} from the pipeline?`, { danger: true });
             if (!ok) return;
@@ -177,7 +221,7 @@ async function openClient(id, ctx) {
           },
         }, "Remove"),
       el("button.btn.btn", { onclick: closeModal }, "Cancel"),
-      el("button.btn.btn.btn-gold", {
+      el("button.btn.btn-gold", {
         onclick: async () => {
           try {
             await api.updateClient(client.id, {
@@ -231,8 +275,8 @@ export function openCreateClient(ctx) {
       el("div.field.full", {}, el("label", {}, "Notes"), f.notes),
     ),
     el("div.row", { style: "justify-content:flex-end;gap:10px" },
-      el("button.btn.btn.btn-ghost", { onclick: closeModal }, "Cancel"),
-      el("button.btn.btn.btn-gold", {
+      el("button.btn.btn-ghost", { onclick: closeModal }, "Cancel"),
+      el("button.btn.btn-gold", {
         onclick: async () => {
           if (!f.company.value.trim()) { toast("Company is required", "warn"); return; }
           try {

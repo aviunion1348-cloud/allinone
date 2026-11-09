@@ -34,7 +34,7 @@ export async function renderAI(ctx) {
       el("div", { style: "flex:1;min-width:300px;color:var(--text-mid);font-size:13px;line-height:1.6" },
         "Explainable multi-factor ranking (WSJF-inspired): every score is a weighted sum of 8 auditable factors. Scores refresh automatically whenever board state changes."),
       el("button.btn.btn", { onclick: () => openWeights(ctx, weights) }, "⚙ Tune weights"),
-      el("button.btn.btn.btn-gold", {
+      el("button.btn.btn-gold", {
         onclick: async () => {
           try {
             const r = await api.recompute();
@@ -120,8 +120,8 @@ function openWeights(ctx, current) {
       );
     }),
     el("div.row", { style: "justify-content:flex-end;gap:10px" },
-      el("button.btn.btn.btn-ghost", { onclick: closeModal }, "Cancel"),
-      el("button.btn.btn.btn-gold", {
+      el("button.btn.btn-ghost", { onclick: closeModal }, "Cancel"),
+      el("button.btn.btn-gold", {
         onclick: async () => {
           const payload = {};
           for (const [k, input] of Object.entries(inputs)) payload[k] = Number(input.value) || 0;

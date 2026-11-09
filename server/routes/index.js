@@ -15,6 +15,7 @@ import {
 import * as repo from "../repositories/index.js";
 import { listSlaPolicies, turnoverHealth, slaState } from "../domain/sla.js";
 import { getWeights, setWeights } from "../domain/ai.js";
+import { PERSONAS, ROLES, COMMS_PROTOCOL } from "../domain/playbook.js";
 
 export const api = Router();
 
@@ -44,9 +45,12 @@ api.post("/auth/login", loginLimiter, validate(loginSchema), async (req, res) =>
   const ok = user && (await bcrypt.compare(password, user.password_hash));
   if (!ok) throw HttpError.unauthorized("Invalid credentials");
   if (!user.active) throw HttpError.forbidden("Account disabled");
-  setSessionCookie(res, signToken(user));
+  const token = signToken(user);
+  setSessionCookie(res, token);
   const { password_hash, ...safe } = user;
-  res.json({ user: safe });
+  // token also returned in body → client stores it as a Bearer fallback for
+  // environments where third-party cookies are blocked (e.g. preview iframes)
+  res.json({ user: safe, token });
 });
 
 api.post("/auth/logout", (req, res) => {
@@ -272,6 +276,10 @@ api.get("/sla/task/:id", (req, res) => {
   if (!task) throw HttpError.notFound("Task");
   res.json({ due_at: task.due_at, sla: slaState(task.due_at) });
 });
+
+/* ── outreach playbook (personas, roles, comms) ─────────────────── */
+api.get("/playbook", (_req, res) =>
+  res.json({ personas: PERSONAS, roles: ROLES, comms: COMMS_PROTOCOL }));
 
 /* ── activity ───────────────────────────────────────────────────── */
 api.get("/activities", (req, res) =>

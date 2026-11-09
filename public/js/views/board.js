@@ -51,14 +51,14 @@ export async function renderBoard(ctx) {
           el("option", { value: p, selected: p === filters.priority }, p)),
       ),
       (filters.q || filters.project_id || filters.assignee_id || filters.priority) &&
-        el("button.btn.btn.btn-ghost.sm", {
+        el("button.btn.btn-ghost.sm", {
           onclick: () => {
             filters.q = ""; filters.project_id = ""; filters.assignee_id = ""; filters.priority = "";
             reload();
           },
         }, "✕ Clear"),
       el("div.spacer"),
-      el("button.btn.btn.btn-gold", { onclick: () => openCreateTask(ctx) }, "+ New task"),
+      el("button.btn.btn-gold", { onclick: () => openCreateTask(ctx) }, "+ New task"),
       el("button.btn.btn", { onclick: () => reload(true) }, "↻ Refresh"),
     ),
     el("div.board", { id: "board" }, el("div.card.skeleton", { style: "height:400px;grid-column:1/-1" })),
@@ -353,7 +353,7 @@ export async function openTask(id, ctx) {
       commentList,
       el("div.row", { style: "margin-top:10px;gap:9px;align-items:flex-end" },
         commentInput,
-        el("button.btn.btn.btn-gold", {
+        el("button.btn.btn-gold", {
           onclick: async () => {
             const body = commentInput.value.trim();
             if (!body) return;
@@ -368,7 +368,7 @@ export async function openTask(id, ctx) {
     ),
     el("div.row", { style: "margin-top:22px;gap:10px;justify-content:flex-end" },
       ["admin", "lead"].includes(ctx.user?.role) &&
-        el("button.btn.btn.btn-danger", {
+        el("button.btn.btn-danger", {
           onclick: async () => {
             const ok = await confirmDialog("Delete task", `Delete “${task.title}”? This also removes its dependencies.`, { danger: true });
             if (!ok) return;
@@ -435,8 +435,8 @@ export function openCreateTask(ctx, defaults = {}) {
       el("div.field.full", {}, el("label", {}, "Description"), f.description),
     ),
     el("div.row", { style: "justify-content:flex-end;gap:10px;margin-top:6px" },
-      el("button.btn.btn.btn-ghost", { onclick: closeModal }, "Cancel"),
-      el("button.btn.btn.btn-gold", {
+      el("button.btn.btn-ghost", { onclick: closeModal }, "Cancel"),
+      el("button.btn.btn-gold", {
         onclick: async () => {
           const title = f.title.value.trim();
           if (!title) { toast("Title is required", "warn"); return; }

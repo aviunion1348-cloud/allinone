@@ -20,7 +20,7 @@ export async function renderProjects(ctx) {
     el("div.row", { style: "margin-bottom:16px" },
       el("div", { style: "color:var(--text-mid);font-size:13px;flex:1" },
         "Every project boots with the standard delivery phases from the pipeline doc — spec → build → QA → demo → ship → handover, each with its turnover clock."),
-      el("button.btn.btn.btn-gold", { onclick: () => openCreateProject(ctx) }, "+ New project"),
+      el("button.btn.btn-gold", { onclick: () => openCreateProject(ctx) }, "+ New project"),
     ),
     projects.length
       ? el("div.grid-3", {}, projects.map((p) => projectCard(p, ctx)))
@@ -79,7 +79,7 @@ export async function renderProjectDetail(id, ctx) {
   mount(content, el("div.stack", {},
     el("div.card", {},
       el("div.row", { style: "gap:10px;flex-wrap:wrap;margin-bottom:10px" },
-        el("button.btn.btn.btn-ghost.sm", { onclick: () => ctx.navigate("projects") }, "← Projects"),
+        el("button.btn.btn-ghost.sm", { onclick: () => ctx.navigate("projects") }, "← Projects"),
         el("div.spacer"),
         el("span.chip.gold", {}, project.code),
         el("span.chip.type", {}, project.status),
@@ -92,7 +92,7 @@ export async function renderProjectDetail(id, ctx) {
         el("div.well", { style: "padding:13px 16px;margin-top:14px;color:var(--text-mid);font-size:13.5px;line-height:1.6" },
           project.description),
       el("div.row", { style: "margin-top:14px;gap:10px" },
-        el("button.btn.btn.btn-gold", { onclick: () => openCreateTask(ctx, { project_id: project.id }) }, "+ Task in this project"),
+        el("button.btn.btn-gold", { onclick: () => openCreateTask(ctx, { project_id: project.id }) }, "+ Task in this project"),
         project.repo_url && el("a.btn", { href: project.repo_url, target: "_blank", rel: "noopener" }, "↗ Repository"),
       ),
     ),
@@ -117,13 +117,13 @@ export async function renderProjectDetail(id, ctx) {
               ph.due_at && !isDone ? slaChip(ph.due_at) : null,
               canAdvance && el("div.row", { style: "gap:6px" },
                 ph.status === "pending" &&
-                  el("button.btn.btn.xs", { onclick: (e) => { e.stopPropagation(); advance(ctx, project.id, ph.id, "active"); } }, "Start"),
+                  el("button.btn.xs", { onclick: (e) => { e.stopPropagation(); advance(ctx, project.id, ph.id, "active"); } }, "Start"),
                 ph.status === "active" &&
-                  el("button.btn.btn.xs.btn-gold", { onclick: (e) => { e.stopPropagation(); advance(ctx, project.id, ph.id, "done"); } }, "Complete"),
+                  el("button.btn.xs.btn-gold", { onclick: (e) => { e.stopPropagation(); advance(ctx, project.id, ph.id, "done"); } }, "Complete"),
                 ph.status === "blocked" &&
-                  el("button.btn.btn.xs", { onclick: (e) => { e.stopPropagation(); advance(ctx, project.id, ph.id, "active"); } }, "Unblock"),
+                  el("button.btn.xs", { onclick: (e) => { e.stopPropagation(); advance(ctx, project.id, ph.id, "active"); } }, "Unblock"),
                 ["pending", "active"].includes(ph.status) &&
-                  el("button.btn.btn.xs", { onclick: (e) => { e.stopPropagation(); advance(ctx, project.id, ph.id, "blocked"); } }, "Block"),
+                  el("button.btn.xs", { onclick: (e) => { e.stopPropagation(); advance(ctx, project.id, ph.id, "blocked"); } }, "Block"),
               ),
             );
           })),
@@ -239,8 +239,8 @@ export function openCreateProject(ctx) {
       el("div.field.full", {}, el("label", {}, "Description"), f.description),
     ),
     el("div.row", { style: "justify-content:flex-end;gap:10px" },
-      el("button.btn.btn.btn-ghost", { onclick: closeModal }, "Cancel"),
-      el("button.btn.btn.btn-gold", {
+      el("button.btn.btn-ghost", { onclick: closeModal }, "Cancel"),
+      el("button.btn.btn-gold", {
         onclick: async () => {
           if (!f.code.value.trim() || !f.name.value.trim()) { toast("Code and name required", "warn"); return; }
           try {

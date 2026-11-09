@@ -1,4 +1,27 @@
 /** API client — single source of truth for all HTTP calls. */
+const TOKEN_KEY = "aurum_token";
+
+export const auth = {
+  get token() {
+    try {
+      return localStorage.getItem(TOKEN_KEY);
+    } catch {
+      return null;
+    }
+  },
+  save(token) {
+    try {
+      if (token) localStorage.setItem(TOKEN_KEY, token);
+      else localStorage.removeItem(TOKEN_KEY);
+    } catch {
+      /* storage unavailable — cookie-only mode */
+    }
+  },
+  clear() {
+    this.save(null);
+  },
+};
+
 class ApiError extends Error {
   constructor(status, code, message, details) {
     super(message);
@@ -14,6 +37,8 @@ async function request(method, path, body) {
     credentials: "same-origin",
     headers: {},
   };
+  const token = auth.token;
+  if (token) opts.headers["Authorization"] = `Bearer ${token}`;
   if (body !== undefined) {
     opts.headers["Content-Type"] = "application/json";
     opts.body = JSON.stringify(body);
@@ -26,6 +51,10 @@ async function request(method, path, body) {
     /* no body */
   }
   if (!res.ok) {
+    if (res.status === 401 && token) {
+      // stale token — drop it so the login screen can take over
+      auth.clear();
+    }
     const err = data?.error ?? {};
     throw new ApiError(res.status, err.code || "error", err.message || res.statusText, err.details);
   }
@@ -83,6 +112,7 @@ export const api = {
 
   slaPolicies: () => request("GET", "/sla/policies"),
   slaHealth: () => request("GET", "/sla/health"),
+  playbook: () => request("GET", "/playbook"),
   activities: (limit = 40) => request("GET", `/activities?limit=${limit}`),
   roadmap: () => request("GET", "/roadmap"),
 };

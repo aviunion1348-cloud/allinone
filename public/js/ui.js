@@ -213,7 +213,7 @@ export function confirmDialog(title, message, { danger = false } = {}) {
         el("h2", {}, title),
         el("p", { style: "color:var(--text-mid); margin:14px 0 24px; line-height:1.6" }, message),
         el("div.row", { style: "justify-content:flex-end" },
-          el("button.btn.btn.btn-ghost", { onclick: () => done(false) }, "Cancel"),
+          el("button.btn.btn-ghost", { onclick: () => done(false) }, "Cancel"),
           el("button", {
             class: `btn ${danger ? "btn-danger" : "btn-gold"}`,
             onclick: () => done(true),

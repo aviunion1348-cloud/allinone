@@ -14,16 +14,21 @@ machine-enforced **turnover SLAs** transcribed from the team's Excalidraw pipeli
 
 ```bash
 npm install
-npm start            # http://localhost:4100
+npm run dev          # http://localhost:4100  (auto-migrates + seeds on first run)
+# or: npm start      # plain production-style boot
 ```
+
+First run creates `data/aurum.sqlite`, applies migrations and seeds the demo
+org (11 users · 7 clients · 5 projects · 31 tasks · 10 SLA policies) — nothing
+else to configure. Verified end-to-end from a clean clone: `npm install && npm run dev`.
 
 Demo login: **`avi@aurum.internal` / `aurum-2026`**
 (other seeded roles: `hoE@`, `cto@`, `agrim@`, `aryan@`, … same password)
 
 | Script | Purpose |
 | --- | --- |
-| `npm start` | Boot server (auto-migrates + seeds on empty DB) |
-| `npm run dev` | `--watch` mode |
+| `npm run dev` | Dev server with `--watch` (auto-migrates + seeds on empty DB) |
+| `npm start` | Plain boot (same behaviour, no watcher) |
 | `npm run migrate` | Apply pending SQL migrations |
 | `npm test` | Domain unit tests + SPA jsdom smoke test |
 | `npm run sync:excalidraw` | Re-fetch/decrypt the pipeline board (runs in CI) |
@@ -139,6 +144,7 @@ POST /tasks · PATCH /tasks/:id · POST /tasks/:id/move · DELETE /tasks/:id
 POST /tasks/:id/comments · /tasks/:id/depends-on · GET …/assignee-suggestions
 GET  /ai/ranks · /ai/score/:id · /ai/weights · PATCH /ai/weights · POST /ai/recompute
 GET  /sla/policies · /sla/health · /sla/task/:id
+GET  /playbook                         (personas · roles · comms protocol)
 GET  /activities · /roadmap · /health
 ```
 

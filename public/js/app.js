@@ -1,5 +1,5 @@
 /** Aurum Ops SPA — auth gate, hash router, cache, background refresh. */
-import { api } from "./api.js";
+import { api, auth } from "./api.js";
 import { $, el, mount, clear, toast, closeModal } from "./ui.js";
 import { renderDashboard } from "./views/dashboard.js";
 import { renderBoard } from "./views/board.js";
@@ -41,6 +41,7 @@ async function boot() {
     state.user = user;
     await enterApp();
   } catch {
+    auth.clear();
     showLogin();
   }
 }
@@ -53,7 +54,8 @@ function showLogin() {
     const email = $("#login-email").value.trim();
     const password = $("#login-password").value;
     try {
-      const { user } = await api.login(email, password);
+      const { user, token } = await api.login(email, password);
+      auth.save(token); // bearer fallback when cookies are blocked (iframes)
       state.user = user;
       toast(`Welcome back, ${user.name}`, "ok");
       $("#login").classList.add("hidden");
@@ -102,6 +104,7 @@ function renderUserChip() {
     el("div.nav-item", {
       onclick: async () => {
         try { await api.logout(); } catch { /* ignore */ }
+        auth.clear();
         location.hash = "";
         location.reload();
       },

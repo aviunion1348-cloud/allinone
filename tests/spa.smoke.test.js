@@ -102,12 +102,15 @@ async function main() {
     body: JSON.stringify({ email: "avi@aurum.internal", password: "aurum-2026" }),
   });
   assert(loginRes.ok, "login 200");
-  // carry session cookie for module-level fetches
-  const cookie = (loginRes.headers.getSetCookie?.() || [loginRes.headers.get("set-cookie")])
-    .filter(Boolean).map((c) => c.split(";")[0]).join("; ");
+  // use bearer token (same path the SPA uses when cookies are blocked)
+  const loginBody = await loginRes.json();
+  assert(typeof loginBody.token === "string" && loginBody.token.length > 40, "login returns bearer token");
   const authedFetch = (url, opts = {}) => {
     const abs = String(url).startsWith("http") ? String(url) : `${BASE}${url}`;
-    return realFetch(abs, { ...opts, headers: { ...(opts.headers || {}), cookie } });
+    return realFetch(abs, {
+      ...opts,
+      headers: { ...(opts.headers || {}), authorization: `Bearer ${loginBody.token}` },
+    });
   };
   globalThis.fetch = authedFetch;
   window.fetch = authedFetch;
@@ -170,10 +173,15 @@ async function main() {
 
   console.log("== pipeline ==");
   await renderPipeline(ctx);
-  await sleep(150);
+  await sleep(200);
   assert(document.querySelectorAll(".stage").length >= 9, "stage columns");
   assert(document.querySelectorAll(".client-card").length >= 5, "client cards");
   assert(text().includes("Turnover SLA policies"), "SLA policy table");
+  assert(text().includes("Persona playbook"), "persona playbook panel");
+  assert(text().includes("Dreamer") && text().includes("Enthusiast") && text().includes("Pessimistic"),
+    "all three personas rendered");
+  assert(text().includes("Market as"), "market-as positioning");
+  assert(text().includes("Delivery roles"), "delivery roles matrix");
 
   console.log("== projects ==");
   await renderProjects(ctx);
