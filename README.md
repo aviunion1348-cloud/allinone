@@ -21,12 +21,17 @@ npm run dev          # http://localhost:4100  (auto-migrates + seeds on first ru
 # or: npm start      # plain production-style boot
 ```
 
-First run creates `data/aurum.sqlite`, applies migrations and seeds the demo
-org (11 users · 7 clients · 5 projects · 31 tasks · 10 SLA policies) — nothing
-else to configure. Verified end-to-end from a clean clone: `npm install && npm run dev`.
+First run creates `data/aurum.sqlite`, applies migrations and seeds **only
+company reference data**: the real team roster (10 users) and the 10 turnover
+SLA policies transcribed from the Excalidraw pipeline document. Clients,
+projects and tasks start **empty** — fill them with real engagements from the
+app. (Databases created by older builds are cleaned once by migration
+`002_purge_demo_data`.) Verified end-to-end from a clean clone:
+`npm install && npm run dev`.
 
-Demo login: **`avi@aurum.internal` / `aurum-2026`**
-(other seeded roles: `hoE@`, `cto@`, `agrim@`, `aryan@`, … same password)
+Admin login: **`avi@aurum.internal` / `aurum-2026`**
+(team accounts: `hoE@`, `cto@`, `agrim@`, `aryan@`, … same password; override
+the seeded password with `AURUM_SEED_PASSWORD` before first boot)
 
 | Script | Purpose |
 | --- | --- |
@@ -181,3 +186,32 @@ with no manual setup — and releases the port on exit. It drives login over
 bearer auth, opens task/create modals, and asserts **zero runtime errors**
 across every route. CI (`.github/workflows/ci.yml`) runs `npm audit
 --audit-level=high` + `npm test` on every push and PR.
+
+---
+
+## Deploy to Vercel
+
+The repo ships with `vercel.json` + `api/index.js`: Vercel runs the whole
+Express app (API **and** the static SPA) as one serverless function.
+
+**Import settings**
+
+- Framework Preset: **Other**
+- **Root Directory: leave empty (repository root)** — do *not* point it at
+  `public/`, otherwise only the static shell deploys and every API call
+  (login included) 404s.
+- Build & Development settings: defaults are fine (no build script needed).
+
+**Environment variables** (Project → Settings → Environment Variables)
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `AURUM_JWT_SECRET` | recommended | Keeps sessions valid across cold starts (otherwise a random secret is generated per instance in `/tmp`) |
+| `AURUM_SEED_PASSWORD` | optional | Password for the seeded team accounts on first boot |
+| `COOKIE_SECURE=1` / `TRUST_PROXY=1` | automatic | Already set for you when `VERCEL=1` |
+
+**Storage caveat:** serverless instances have no persistent disk, so the
+SQLite file lives in `/tmp` — data written in one instance is lost on cold
+start. Login, dashboard and all features work; for durable shared data,
+point `DB_FILE` at a volume or swap `server/db/connection.js` for a hosted
+SQLite/Postgres driver (repositories keep the rest of the app unchanged).

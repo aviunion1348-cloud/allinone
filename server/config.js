@@ -2,14 +2,23 @@
  * Typed runtime configuration. Everything is env-overridable; secrets are
  * generated once at first boot and persisted under data/ so restarts don't
  * invalidate sessions.
+ *
+ * On Vercel the bundle root is read-only, so all mutable state (SQLite
+ * file, generated JWT secret) is redirected to /tmp — writable there, but
+ * per-instance: set AURUM_JWT_SECRET as an env var so sessions survive
+ * cold starts.
  */
 import { randomBytes } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const dataDir = path.join(root, "data");
+const onVercel = Boolean(process.env.VERCEL);
+const dataDir = onVercel
+  ? path.join(os.tmpdir(), "aurum-data") // bundle root is read-only on serverless
+  : path.join(root, "data");
 mkdirSync(dataDir, { recursive: true });
 
 function secret(name, bytes = 48) {
@@ -34,11 +43,13 @@ export const config = Object.freeze({
   jwtSecret: secret("AURUM_JWT_SECRET"),
   jwtTtl: process.env.JWT_TTL || "12h",
   cookieName: "aurum_session",
-  cookieSecure: process.env.COOKIE_SECURE === "1",
+  cookieSecure: process.env.COOKIE_SECURE === "1" || onVercel,
   seedOnEmpty: process.env.SEED_ON_EMPTY !== "0",
   logLevel: process.env.LOG_LEVEL || (env === "test" ? "error" : "info"),
   corsOrigins: (process.env.CORS_ORIGINS || "").split(",").filter(Boolean),
-  trustProxy: process.env.TRUST_PROXY === "1",
+  // Vercel sits behind a proxy — trusting it is required for correct
+  // client IPs and to keep express-rate-limit's header validation happy.
+  trustProxy: process.env.TRUST_PROXY === "1" || onVercel,
   excalidrawUrl:
     process.env.EXCALIDRAW_URL ||
     "https://excalidraw.com/#json=_z6CsPYBItOKkslJ_wN30,tWCP-uOrZB1_YFF7Qr03Wg",

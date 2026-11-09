@@ -98,6 +98,7 @@ export const api = {
   project: (id) => request("GET", `/projects/${id}`),
   createProject: (d) => request("POST", "/projects", d),
   updateProject: (id, patch) => request("PATCH", `/projects/${id}`, patch),
+  deleteProject: (id) => request("DELETE", `/projects/${id}`),
   advancePhase: (projectId, phaseId, status) =>
     request("POST", `/projects/${projectId}/phases/${phaseId}/advance`, { status }),
 

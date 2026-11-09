@@ -91,11 +91,19 @@ async function waitFor(fn, timeout = 6000, label = "condition") {
 
 /* ── self-boot: npm test works with no pre-started dev server ────── */
 let ownServer = null;
+let ownDbFile = null;
 async function ensureServer() {
   try {
     const r = await realFetch(`${BASE}/api/v1/health`);
     if (r.ok) return; // external server already running (dev flow)
   } catch { /* down — boot one for this test run */ }
+  // hermetic: never write fixtures or migrations into the dev data/ file
+  if (!process.env.DB_FILE) {
+    const path = await import("node:path");
+    const os = await import("node:os");
+    ownDbFile = path.join(os.tmpdir(), `aurum-smoke-${process.pid}.sqlite`);
+    process.env.DB_FILE = ownDbFile;
+  }
   const { createApp } = await import("../server/app.js");
   const { migrate } = await import("../server/db/migrate.js");
   const { seedIfEmpty } = await import("../server/db/seed.js");
@@ -106,7 +114,7 @@ async function ensureServer() {
     const s = createApp().listen(port, "0.0.0.0", () => resolve(s));
     s.once("error", reject);
   });
-  console.log(`(test server booted on :${port})`);
+  console.log(`(test server booted on :${port}, db ${ownDbFile ?? "external"})`);
 }
 
 async function shutdown() {
@@ -116,6 +124,12 @@ async function shutdown() {
   await new Promise((r) => ownServer.close(r));
   const { closeDb } = await import("../server/db/connection.js");
   closeDb();
+  if (ownDbFile) {
+    const fs = await import("node:fs");
+    for (const suffix of ["", "-wal", "-shm"]) {
+      try { fs.unlinkSync(ownDbFile + suffix); } catch { /* already gone */ }
+    }
+  }
 }
 
 /* ── run ──────────────────────────────────────────────────────────── */
@@ -156,6 +170,24 @@ async function main() {
   const { api } = await import("../public/js/api.js");
   assert(true, "all view modules imported");
 
+  /* Fixtures created through the real API — proves CRUD works on an
+     empty workspace and gives every view something to render. */
+  console.log("== fixtures via API ==");
+  const fxClient = await api.post("/clients", {
+    name: "Smoke Contact", company: "SmokeCo", stage: "technical_consultation",
+  });
+  const fxProject = await api.post("/projects", {
+    code: "SMOKE-1", name: "Smoke fixture project", client_id: fxClient.id,
+  });
+  const fxTask = await api.post("/tasks", {
+    project_id: fxProject.id, title: "Smoke fixture task",
+    type: "chore", status: "todo", priority: "medium", estimate_hours: 2,
+  });
+  assert(
+    Boolean(fxClient?.id && fxProject?.id && fxTask?.id),
+    "client + project + task created via API",
+  );
+
   // cache like app.js does
   const [users, projects, clients] = await Promise.all([api.users(), api.projects(), api.clients()]);
   const ctx = {
@@ -182,7 +214,7 @@ async function main() {
   await renderBoard(ctx);
   await waitFor(() => document.querySelectorAll(".task-card").length > 0, 6000, "task cards");
   const cardCount = document.querySelectorAll(".task-card").length;
-  assert(cardCount >= 20, `task cards rendered (${cardCount})`);
+  assert(cardCount >= 1, `task cards rendered (${cardCount})`);
   assert(document.querySelectorAll(".column").length === 6, "6 kanban columns");
   assert(document.querySelector(".column[data-col='in_progress']") != null, "in_progress column");
 
@@ -205,7 +237,7 @@ async function main() {
   await renderPipeline(ctx);
   await sleep(200);
   assert(document.querySelectorAll(".stage").length >= 9, "stage columns");
-  assert(document.querySelectorAll(".client-card").length >= 5, "client cards");
+  assert(document.querySelectorAll(".client-card").length >= 1, "client cards");
   assert(text().includes("Turnover SLA policies"), "SLA policy table");
   assert(text().includes("Persona playbook"), "persona playbook panel");
   assert(text().includes("Dreamer") && text().includes("Enthusiast") && text().includes("Pessimistic"),
@@ -216,8 +248,8 @@ async function main() {
   console.log("== projects ==");
   await renderProjects(ctx);
   await sleep(150);
-  assert(document.querySelectorAll(".card").length >= 3, "project cards");
-  await renderProjectDetail(projects[0].id, ctx);
+  assert(document.querySelectorAll(".card").length >= 1, "project cards");
+  await renderProjectDetail(fxProject.id, ctx);
   await sleep(150);
   assert(document.querySelectorAll(".phase").length === 6, "6 delivery phases");
   assert(text().includes("Spec & architecture"), "spec phase present");
@@ -231,7 +263,7 @@ async function main() {
   await renderAI(ctx);
   await sleep(200);
   assert(text().includes("Priority queue"), "rank queue");
-  assert(document.querySelectorAll("tbody tr").length >= 10, "ranked rows");
+  assert(document.querySelectorAll("tbody tr").length >= 1, "ranked rows");
   assert(text().includes("Model weights"), "weights panel");
 
   console.log("== team ==");
@@ -255,6 +287,13 @@ async function main() {
   document.querySelector(".modal-backdrop")?.click();
   const confirmed = await confirmedP;
   assert(confirmed === false, "confirmDialog resolves false on cancel (backdrop)");
+
+  console.log("== cleanup fixtures ==");
+  await api.deleteTask(fxTask.id);
+  await api.deleteProject(fxProject.id);
+  await api.deleteClient(fxClient.id);
+  const after = await api.get("/tasks");
+  assert(!after.some((t) => t.title === "Smoke fixture task"), "fixtures cleaned up");
 
   console.log("== auth guard ==");
   const bare = await realFetch(`${BASE}/api/v1/dashboard`);
