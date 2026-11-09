@@ -76,12 +76,12 @@ async function main() {
   ];
   for (const spec of authed) {
     const i = spec.indexOf(" ");
-    await hit(spec, spec.slice(i + 1), { method: spec.slice(0, i), headers: auth });
+    await hit(spec, `/api/v1${spec.slice(i + 1)}`, { method: spec.slice(0, i), headers: auth });
   }
 
   let exitCode = 0;
 
-  const dash = results.find((r) => r.label.includes("/dashboard"));
+  const dash = results.find((r) => r.label === "GET /api/v1/dashboard");
   say("");
   if (dash && dash.status === 200) {
     try {
