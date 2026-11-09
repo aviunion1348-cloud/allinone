@@ -35,7 +35,7 @@ const loginLimiter = rateLimit({
 });
 
 const loginSchema = z.object({
-  email: z.string().email(),
+  email: z.email(),
   password: z.string().min(1),
 });
 
@@ -84,7 +84,7 @@ const clientSchema = z.object({
   name: z.string().min(1).max(120),
   company: z.string().min(1).max(120),
   contact_name: z.string().max(120).optional().nullable(),
-  email: z.string().email().optional().nullable().or(z.literal("")),
+  email: z.email().optional().nullable().or(z.literal("")),
   persona: z.enum(["dreamer", "enthusiast", "pessimistic"]).optional().nullable(),
   region: z.enum(["india", "emea", "americas"]).optional().nullable(),
   stage: z.enum([
@@ -137,7 +137,7 @@ const projectSchema = z.object({
   start_date: z.number().int().optional().nullable(),
   target_date: z.number().int().optional().nullable(),
   budget_hours: z.number().min(0).optional(),
-  repo_url: z.string().url().optional().nullable().or(z.literal("")),
+  repo_url: z.url().optional().nullable().or(z.literal("")),
 });
 
 api.post("/projects", requireRole("admin", "lead"), validate(projectSchema), (req, res) => {
@@ -260,7 +260,7 @@ api.get("/ai/score/:id", (req, res) => {
 });
 api.get("/ai/weights", (_req, res) => res.json(getWeights()));
 api.patch("/ai/weights", requireRole("admin", "lead"), (req, res) => {
-  const parsed = z.record(z.number().min(0).max(1)).safeParse(req.body);
+  const parsed = z.record(z.string(), z.number().min(0).max(1)).safeParse(req.body);
   if (!parsed.success) throw HttpError.badRequest("Weights must be numeric 0..1");
   res.json(setWeights(parsed.data));
 });

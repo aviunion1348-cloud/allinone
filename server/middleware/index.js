@@ -91,7 +91,7 @@ export function errorHandler(err, req, res, _next) {
       error: {
         code: "validation_error",
         message: "Validation failed",
-        details: err.errors.map((e) => ({ path: e.path.join("."), message: e.message })),
+        details: err.issues.map((e) => ({ path: e.path.join("."), message: e.message })),
       },
     });
   }

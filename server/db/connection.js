@@ -6,7 +6,23 @@
  * - Positional parameter helper that sanitises JS types SQLite rejects
  *   (booleans, undefined) so repositories stay type-safe.
  */
-import { DatabaseSync } from "node:sqlite";
+/**
+ * Capability preflight: node:sqlite is built-in from Node 22.5 but only
+ * unflagged from 22.13 — fail fast with an actionable message instead of a
+ * cryptic ERR_UNKNOWN_BUILTIN_MODULE (common on Windows boxes with old Node).
+ */
+let DatabaseSync;
+try {
+  ({ DatabaseSync } = await import("node:sqlite"));
+} catch {
+  console.error(
+    `\nAurum Ops requires the built-in node:sqlite module (Node.js >= 22.13).\n` +
+    `You are running Node ${process.version}.\n` +
+    `Upgrade Node.js from https://nodejs.org (LTS 22.13+ or newer), then re-run npm install && npm run dev.\n`
+  );
+  process.exit(1);
+}
+
 import { config } from "../config.js";
 import { log } from "../util/logger.js";
 
