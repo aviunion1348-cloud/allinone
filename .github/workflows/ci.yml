@@ -5,6 +5,9 @@ on:
     branches: [main, "arena/**"]
   pull_request:
 
+permissions:
+  contents: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -17,5 +20,14 @@ jobs:
       - run: npm ci
       - name: Audit (fail on high+ vulnerabilities)
         run: npm audit --audit-level=high
-      - name: Unit + SPA smoke tests (self-booting)
-        run: npm test
+      - name: Unit + smoke + boot E2E tests
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee test-output.log || {
+            git config user.name "ci-bot"
+            git config user.email "ci-bot@users.noreply.github.com"
+            git add test-output.log
+            git diff --cached --quiet || git commit -m "ci: test failure log"
+            git push || true
+            exit 1
+          }
