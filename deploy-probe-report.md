@@ -1,27 +1,27 @@
 # Deploy probe — https://allinone-two-nu.vercel.app
 
-_run at 2026-11-09T08:48:15.844Z_
+_run at 2026-11-09T09:01:25.099Z_
 
-200  404ms    GET / (static shell)
+200  1040ms   GET / (static shell)
      contains new copy: true
-200  208ms    GET /css/app.css
-200  232ms    GET /js/app.js
-200  97ms     GET /js/views/dashboard.js
-200  103ms    GET /api/v1/health
-200  368ms    POST /api/v1/auth/login
+200  34ms     GET /css/app.css
+200  52ms     GET /js/app.js
+200  33ms     GET /js/views/dashboard.js
+200  33ms     GET /api/v1/health
+200  247ms    POST /api/v1/auth/login
      token length: 215
-200  100ms    GET /auth/me
-200  104ms    GET /dashboard
-200  159ms    GET /tasks/board
-200  124ms    GET /clients
-200  199ms    GET /projects
-200  104ms    GET /ai/ranks?limit=30
-200  229ms    GET /sla/health
-200  95ms     GET /playbook
-200  95ms     GET /roadmap
-200  104ms    GET /users/workload
-200  98ms     GET /pipeline/stages
-200  107ms    GET /activities?limit=10
+200  25ms     GET /auth/me
+200  36ms     GET /dashboard
+200  36ms     GET /tasks/board
+200  29ms     GET /clients
+200  29ms     GET /projects
+200  31ms     GET /ai/ranks?limit=30
+200  26ms     GET /sla/health
+200  29ms     GET /playbook
+200  29ms     GET /roadmap
+200  34ms     GET /users/workload
+200  28ms     GET /pipeline/stages
+200  26ms     GET /activities?limit=10
 
 ### response bodies (first 140 chars)
 - GET /auth/me → {"user":{"id":1,"email":"avi@aurum.internal","name":"Avi","role":"admin","title":"Founder / QA lead","color":"#e8b923","capacity_hours_week"
