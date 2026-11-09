@@ -89,8 +89,38 @@ async function waitFor(fn, timeout = 6000, label = "condition") {
   throw new Error(`timeout waiting for ${label}`);
 }
 
+/* ── self-boot: npm test works with no pre-started dev server ────── */
+let ownServer = null;
+async function ensureServer() {
+  try {
+    const r = await realFetch(`${BASE}/api/v1/health`);
+    if (r.ok) return; // external server already running (dev flow)
+  } catch { /* down — boot one for this test run */ }
+  const { createApp } = await import("../server/app.js");
+  const { migrate } = await import("../server/db/migrate.js");
+  const { seedIfEmpty } = await import("../server/db/seed.js");
+  migrate();
+  seedIfEmpty();
+  const port = Number(new URL(BASE).port) || 4100;
+  ownServer = await new Promise((resolve, reject) => {
+    const s = createApp().listen(port, "0.0.0.0", () => resolve(s));
+    s.once("error", reject);
+  });
+  console.log(`(test server booted on :${port})`);
+}
+
+async function shutdown() {
+  if (!ownServer) return;
+  // keep-alive sockets from this process's own fetch would stall close()
+  ownServer.closeAllConnections?.();
+  await new Promise((r) => ownServer.close(r));
+  const { closeDb } = await import("../server/db/connection.js");
+  closeDb();
+}
+
 /* ── run ──────────────────────────────────────────────────────────── */
 async function main() {
+  await ensureServer();
   console.log("== health ==");
   const health = await (await realFetch(`${BASE}/api/v1/health`)).json();
   assert(health.ok === true, "API healthy");
@@ -233,14 +263,18 @@ async function main() {
   const realErrors = errors.filter((e) =>
     !e.includes("Could not parse CSS") &&      // jsdom css limitations
     !e.includes("Not implemented: navigation") &&
-    !e.includes("Error: Not implemented"));
+    !e.includes("Error: Not implemented") &&
+    !e.includes("ExperimentalWarning") &&      // node:sqlite warning (self-boot)
+    !e.includes("trace-warnings"));
   assert(realErrors.length === 0, `no runtime errors (${realErrors.length})`);
   if (realErrors.length) console.log(realErrors.slice(0, 5).join("\n"));
 
   console.log(process.exitCode ? "\nSMOKE TEST FAILED" : "\nSMOKE TEST PASSED ✓");
+  await shutdown();
 }
 
-main().catch((err) => {
+main().catch(async (err) => {
   console.error("SMOKE TEST CRASH:", err);
+  await shutdown().catch(() => {});
   process.exit(1);
 });

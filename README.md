@@ -12,6 +12,9 @@ machine-enforced **turnover SLAs** transcribed from the team's Excalidraw pipeli
 
 ## Quick start
 
+Requires **Node.js ≥ 22.13** (built-in `node:sqlite`; older versions get a
+clear upgrade message at boot). Zero-vulnerability dependency tree (`npm audit` clean).
+
 ```bash
 npm install
 npm run dev          # http://localhost:4100  (auto-migrates + seeds on first run)
@@ -172,5 +175,9 @@ npm test
 # tests/spa.smoke.test.js — renders all 7 views in jsdom against a live server
 ```
 
-The smoke test boots the SPA modules in jsdom, drives login, opens task/create
-modals, and asserts **zero runtime errors** across every route.
+`npm test` is fully self-contained: the smoke test boots its own server
+(migrate + seed + listen) when none is running, so it works on a fresh clone
+with no manual setup — and releases the port on exit. It drives login over
+bearer auth, opens task/create modals, and asserts **zero runtime errors**
+across every route. CI (`.github/workflows/ci.yml`) runs `npm audit
+--audit-level=high` + `npm test` on every push and PR.
