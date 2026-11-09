@@ -68,6 +68,7 @@ async function main() {
   say(`     token length: ${token.length}`);
 
   const auth = { authorization: `Bearer ${token}` };
+  const bodies = [];
   const authed = [
     "GET /auth/me", "GET /dashboard", "GET /tasks/board", "GET /clients",
     "GET /projects", "GET /ai/ranks?limit=30", "GET /sla/health",
@@ -76,12 +77,17 @@ async function main() {
   ];
   for (const spec of authed) {
     const i = spec.indexOf(" ");
-    await hit(spec, `/api/v1${spec.slice(i + 1)}`, { method: spec.slice(0, i), headers: auth });
+    const r = await hit(spec, `/api/v1${spec.slice(i + 1)}`, { method: spec.slice(0, i), headers: auth });
+    bodies.push(`${spec} → ${String(r.body).slice(0, 140).replace(/\n/g, " ")}`);
   }
+
+  say("");
+  say("### response bodies (first 140 chars)");
+  for (const b of bodies) say(`- ${b}`);
 
   let exitCode = 0;
 
-  const dash = results.find((r) => r.label === "GET /api/v1/dashboard");
+  const dash = results.find((r) => r.label === "GET /dashboard");
   say("");
   if (dash && dash.status === 200) {
     try {
